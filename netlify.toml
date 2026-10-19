@@ -41,11 +41,14 @@
   # secret may ever be given one of these names. Nothing in these apps needs one.
   #
   # Fill in from the output of contracts/script/Deploy.s.sol.
-  NEXT_PUBLIC_BOTCHAIN_NETWORK = "mainnet"
+  NEXT_PUBLIC_BOTCHAIN_NETWORK = "testnet"
   NEXT_PUBLIC_CONTRACT_677 = ""
   NEXT_PUBLIC_DEPLOY_BLOCK_677 = ""
-  NEXT_PUBLIC_CONTRACT_968 = ""
-  NEXT_PUBLIC_DEPLOY_BLOCK_968 = ""
+  NEXT_PUBLIC_CONTRACT_968 = "0x3f13E3EA326781CE3653E77016Fd209C80E2642c"
+  # The ERC-20 this Assembly governs, minted on Bohr with Forge — our own token
+  # deployer producing the input for our own DAO.
+  NEXT_PUBLIC_GOVERNANCE_TOKEN_968 = "0x8fE6135e2b49a4e6aDf382E88f8eB08397A6B72F"
+  NEXT_PUBLIC_DEPLOY_BLOCK_968 = "27397392"
 
 [[headers]]
   for = "/*"
