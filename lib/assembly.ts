@@ -38,3 +38,11 @@ export function formatTokenAmount(amount: bigint, decimals: number = 18): string
   const remainderStr = remainder.toString().padStart(decimals, "0").slice(0, 2);
   return `${integerPart.toLocaleString()}.${remainderStr}`;
 }
+
+/**
+ * Assembly.sol declares `MIN_DURATION = 1 hours` and `MAX_DURATION = 30 days`. Here in the unit
+ * the contract is actually given, because the propose form validates seconds and the two must not
+ * drift — see lib/__tests__/contract-limits.
+ */
+export const MIN_DURATION = 3600;
+export const MAX_DURATION = 30 * 86400;

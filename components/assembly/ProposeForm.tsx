@@ -18,6 +18,9 @@ import { useToast } from "@/components/ui/Toast";
 import { isBotChainId } from "@/lib/botchain/chain";
 import { getDeployment } from "@/lib/botchain/deployment";
 import { assemblyAbi } from "@/lib/botchain/abi";
+import { MIN_DURATION, MAX_DURATION } from "@/lib/assembly";
+
+// The contract's own bounds, in the unit it is given. MIN_DURATION = 1 hours, MAX_DURATION = 30
 
 export default function ProposeForm() {
   return (
@@ -86,13 +89,20 @@ function ProposeFormInner() {
   }, [hash, receipt.isSuccess, receipt.isError, receipt.data, toast]);
 
   const trimmedDesc = description.trim();
+  // Checked on the seconds that are sent, not the days that were typed. The two agree across the
+  // whole current input range, but only by arithmetic accident: the UI bound (1/24 days) and the
+  // contract bound (3600 seconds) are separate numbers, and flooring sits between them.
   const daysNum = parseFloat(durationDays);
-  const durationValid = !isNaN(daysNum) && daysNum >= 1 / 24 && daysNum <= 30;
+  const durationSecondsNum = Number.isFinite(daysNum) ? Math.floor(daysNum * 86400) : NaN;
+  const durationValid =
+    Number.isFinite(durationSecondsNum) &&
+    durationSecondsNum >= MIN_DURATION &&
+    durationSecondsNum <= MAX_DURATION;
 
   const handleSubmit = useCallback(async () => {
     if (!trimmedDesc || !durationValid || !deployment || !isBotChainId(chainId)) return;
 
-    const durationSeconds = BigInt(Math.floor(daysNum * 86400));
+    const durationSeconds = BigInt(durationSecondsNum);
 
     setStage("signing");
     try {
@@ -116,7 +126,7 @@ function ProposeFormInner() {
       }
       toast("error", "Submission cancelled", err instanceof Error ? err.message : "Unknown error");
     }
-  }, [trimmedDesc, durationValid, daysNum, deployment, chainId, writeContractAsync, toast]);
+  }, [trimmedDesc, durationValid, durationSecondsNum, deployment, chainId, writeContractAsync, toast]);
 
   if (stage === "confirmed") {
     return (
