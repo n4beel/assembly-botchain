@@ -23,8 +23,8 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import TxStatus, { type TxStage } from "@/components/ui/TxStatus";
 import { useToast } from "@/components/ui/Toast";
-import { isBotChainId } from "@/lib/botchain/chain";
-import { getDeployment } from "@/lib/botchain/deployment";
+import { addressUrl, isBotChainId } from "@/lib/botchain/chain";
+import { ZERO_ADDRESS, getDeployment } from "@/lib/botchain/deployment";
 import { assemblyAbi, erc20Abi } from "@/lib/botchain/abi";
 import {
   forPercent,
@@ -34,10 +34,21 @@ import {
   totalVotes,
   type Proposal,
 } from "@/lib/assembly";
+import ClaimTokens from "@/components/assembly/ClaimTokens";
 
 interface ProposalViewProps {
   id: bigint;
 }
+
+/**
+ * castVote fails inside the token as often as inside Assembly — a voter who approved but holds
+ * nothing reverts InsufficientBalance, which is ForgedToken's error, not this contract's. Without
+ * it in scope viem cannot name the error and the user is told only that something failed.
+ */
+const ASSEMBLY_ABI_WITH_TOKEN_ERRORS = [
+  ...assemblyAbi,
+  ...erc20Abi.filter((entry) => entry.type === "error"),
+] as const;
 
 export default function ProposalView({ id }: ProposalViewProps) {
   const chainId = useChainId();
@@ -216,6 +227,15 @@ export default function ProposalView({ id }: ProposalViewProps) {
   const hasVoted = Boolean(hasVotedData);
   const deposited = depositedAmountData ?? 0n;
 
+  // The balance was read above and then ignored, which is how a vote for more tokens than you
+  // hold reached the chain: approve succeeded (an allowance may exceed a balance quite legally),
+  // castVote called transferFrom, and the token reverted InsufficientBalance with the gas for
+  // both transactions already spent. Checked here, the vote is simply not offered.
+  const govBalance = tokenBalanceData ?? 0n;
+  const holdsNone = govBalance === 0n;
+  const overBalance = parsedAmount > govBalance;
+  const canVote = parsedAmount > 0n && !overBalance && stage !== "signing" && stage !== "pending";
+
   const handleApprove = async () => {
     if (!tokenAddress || !deployment || parsedAmount <= 0n) return;
     setActionType("approve");
@@ -244,7 +264,9 @@ export default function ProposalView({ id }: ProposalViewProps) {
     try {
       const txHash = await writeContractAsync({
         address: deployment.address,
-        abi: assemblyAbi,
+        // The token's errors are merged in so a revert from inside transferFrom decodes. The call
+        // is castVote, but the failure usually originates one level down, in the token.
+        abi: ASSEMBLY_ABI_WITH_TOKEN_ERRORS,
         functionName: "castVote",
         args: [id, support, parsedAmount],
       });
@@ -370,7 +392,32 @@ export default function ProposalView({ id }: ProposalViewProps) {
 
                   <TxStatus stage={stage} hash={hash} />
 
-                  {needsApproval ? (
+                  {!holdsNone && overBalance && parsedAmount > 0n && (
+                    <p className="text-xs text-amber-400">
+                      You are trying to vote with {formatUnits(parsedAmount, decimals)} {symbol} but
+                      hold {formatUnits(govBalance, decimals)}. Lower the amount.
+                    </p>
+                  )}
+
+                  {holdsNone ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-amber-400">
+                        This wallet holds no {symbol}, so it cannot vote yet.
+                      </p>
+                      <ClaimTokens token={tokenAddress} onClaimed={() => void refetchBalance()} />
+                      <p className="text-[11px] text-zinc-500">
+                        Token:{" "}
+                        <a
+                          href={addressUrl(chainId, tokenAddress ?? ZERO_ADDRESS)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono underline"
+                        >
+                          {tokenAddress?.slice(0, 10)}…{tokenAddress?.slice(-8)}
+                        </a>
+                      </p>
+                    </div>
+                  ) : needsApproval ? (
                     <div className="space-y-2">
                       <p className="text-xs text-amber-400">
                         Step 1 of 2: Approve Assembly to lock your {symbol} tokens for voting.
@@ -386,14 +433,14 @@ export default function ProposalView({ id }: ProposalViewProps) {
                     <div className="flex gap-3">
                       <Button
                         onClick={() => handleVote(true)}
-                        disabled={parsedAmount <= 0n || stage === "signing" || stage === "pending"}
+                        disabled={!canVote}
                         className="bg-emerald-600 hover:bg-emerald-500 flex-1"
                       >
                         Vote For ({voteAmount} {symbol})
                       </Button>
                       <Button
                         onClick={() => handleVote(false)}
-                        disabled={parsedAmount <= 0n || stage === "signing" || stage === "pending"}
+                        disabled={!canVote}
                         variant="ghost"
                         className="border-rose-600 text-rose-400 hover:bg-rose-950/30 flex-1"
                       >

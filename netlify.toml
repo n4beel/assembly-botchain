@@ -50,6 +50,12 @@
   NEXT_PUBLIC_GOVERNANCE_TOKEN_968 = "0x8fE6135e2b49a4e6aDf382E88f8eB08397A6B72F"
   NEXT_PUBLIC_DEPLOY_BLOCK_968 = "27397392"
 
+  # The governance-token faucet. Assembly's token is fixed-supply with no mint, so without this
+  # the only address that can ever vote is the one that deployed the token. Source-verified at
+  # scan.bohr.life; mainnet gets its own when Assembly goes over.
+  NEXT_PUBLIC_FAUCET_968 = "0x924f02fF4cd08b13e27eae4BD303ab110F36052E"
+  NEXT_PUBLIC_FAUCET_677 = ""
+
 [[headers]]
   for = "/*"
   [headers.values]

@@ -22,6 +22,22 @@ import { MIN_DURATION, MAX_DURATION } from "@/lib/assembly";
 
 // The contract's own bounds, in the unit it is given. MIN_DURATION = 1 hours, MAX_DURATION = 30
 
+/**
+ * The windows a proposal is actually given, spanning the contract's full range.
+ *
+ * MIN_DURATION is one hour and MAX_DURATION thirty days; both ends are offered so neither is
+ * reachable only by arithmetic.
+ */
+const DURATIONS = [
+  { label: "1 hour", seconds: 3600 },
+  { label: "6 hours", seconds: 6 * 3600 },
+  { label: "24 hours", seconds: 86400 },
+  { label: "3 days", seconds: 3 * 86400 },
+  { label: "7 days", seconds: 7 * 86400 },
+  { label: "14 days", seconds: 14 * 86400 },
+  { label: "30 days", seconds: 30 * 86400 },
+] as const;
+
 export default function ProposeForm() {
   return (
     <BotChainGate
@@ -39,7 +55,7 @@ function ProposeFormInner() {
   const { writeContractAsync } = useWriteContract();
 
   const [description, setDescription] = useState("");
-  const [durationDays, setDurationDays] = useState("7");
+  const [durationSeconds, setDurationSeconds] = useState(7 * 86400);
 
   const [stage, setStage] = useState<TxStage>("idle");
   const [hash, setHash] = useState<Hex | null>(null);
@@ -92,8 +108,9 @@ function ProposeFormInner() {
   // Checked on the seconds that are sent, not the days that were typed. The two agree across the
   // whole current input range, but only by arithmetic accident: the UI bound (1/24 days) and the
   // contract bound (3600 seconds) are separate numbers, and flooring sits between them.
-  const daysNum = parseFloat(durationDays);
-  const durationSecondsNum = Number.isFinite(daysNum) ? Math.floor(daysNum * 86400) : NaN;
+  const durationSecondsNum = durationSeconds;
+  // Shown rather than left to be worked out: a deadline is the thing a voter plans around.
+  const closesAt = new Date(Date.now() + durationSeconds * 1000);
   const durationValid =
     Number.isFinite(durationSecondsNum) &&
     durationSecondsNum >= MIN_DURATION &&
@@ -149,7 +166,7 @@ function ProposeFormInner() {
             variant="ghost"
             onClick={() => {
               setDescription("");
-              setDurationDays("7");
+              setDurationSeconds(7 * 86400);
               setStage("idle");
               setHash(null);
               setCreatedId(null);
@@ -181,16 +198,38 @@ function ProposeFormInner() {
 
         <div>
           <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-            Voting Duration (days, 1 hour to 30 days)
+            Voting duration
           </label>
-          <Input
-            type="number"
-            step="0.1"
-            min="0.05"
-            max="30"
-            value={durationDays}
-            onChange={(e) => setDurationDays(e.target.value)}
-          />
+
+          {/* Chosen from the windows people actually want, not typed as a fraction of a day. The
+              field used to ask for days with step 0.1, which made the contract's one-hour minimum
+              reachable only by entering 0.0417 — a number nobody arrives at. */}
+          <div className="flex flex-wrap gap-2">
+            {DURATIONS.map((d) => {
+              const active = durationSeconds === d.seconds;
+              return (
+                <button
+                  key={d.label}
+                  type="button"
+                  onClick={() => setDurationSeconds(d.seconds)}
+                  disabled={stage === "signing" || stage === "pending"}
+                  className={[
+                    "px-3 py-1.5 text-xs rounded border transition-colors cursor-pointer",
+                    active
+                      ? "border-indigo-500 bg-indigo-950/40 text-indigo-200"
+                      : "border-zinc-800 text-zinc-400 hover:border-zinc-700",
+                  ].join(" ")}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            Voting closes {closesAt.toLocaleString()} — {DURATIONS.find((d) => d.seconds === durationSeconds)?.label} from
+            the moment the proposal is created. The contract accepts one hour to thirty days.
+          </p>
         </div>
 
         <div className="p-3 bg-zinc-900/50 rounded border border-zinc-800 text-xs text-zinc-400 space-y-1">

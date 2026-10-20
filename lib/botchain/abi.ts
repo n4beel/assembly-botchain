@@ -175,6 +175,26 @@ export const assemblyAbi = [
 ] as const;
 
 export const erc20Abi = [
+  // The token's own errors, so a revert that comes from transferFrom reads as a sentence rather
+  // than an undecoded selector. castVote reverting InsufficientBalance is the common case — the
+  // voter approved, which an allowance larger than a balance permits, and then had nothing to
+  // transfer. These two are ForgedToken's; see forge-botchain/contracts/src/ForgedToken.sol.
+  {
+    type: "error",
+    name: "InsufficientBalance",
+    inputs: [
+      { name: "balance", type: "uint256" },
+      { name: "needed", type: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "InsufficientAllowance",
+    inputs: [
+      { name: "allowed", type: "uint256" },
+      { name: "needed", type: "uint256" },
+    ],
+  },
   {
     type: "function",
     name: "approve",
@@ -219,3 +239,60 @@ export const erc20Abi = [
 ] as const;
 
 export const contractAbi = assemblyAbi;
+
+/**
+ * The governance-token faucet.
+ *
+ * Assembly's token is fixed-supply with no mint, so the entire supply starts in one address and
+ * nobody else can vote. The faucet holds a share of it and hands out a fixed amount per address,
+ * which is the only thing that makes the app usable by anyone who did not deploy it.
+ */
+export const govFaucetAbi = [
+  { type: "function", name: "claim", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  {
+    type: "function",
+    name: "claimed",
+    stateMutability: "view",
+    inputs: [{ name: "claimer", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "amount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "remainingClaims",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "Claimed",
+    inputs: [
+      { name: "who", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  { type: "error", name: "AlreadyClaimed", inputs: [{ name: "who", type: "address" }] },
+  {
+    type: "error",
+    name: "FaucetEmpty",
+    inputs: [
+      { name: "held", type: "uint256" },
+      { name: "needed", type: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "TransferFailed",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+  },
+] as const;

@@ -57,10 +57,24 @@ function selectorOf(entry: AbiEntry): string {
   return entry.type === "event" ? toEventSelector(sig) : toFunctionSelector(sig);
 }
 
-/** Every ABI this app exports, flattened. A project may export one per contract. */
+/**
+ * ABIs describing contracts this project does not compile.
+ *
+ * `erc20Abi` is the governance token's — a ForgedToken, deployed from forge-botchain, whose
+ * source is not in this repo's contracts/src. Checking it here asserted that an external
+ * contract's interface appears in our own artifacts, which it never will, and left this whole
+ * file failing for reasons unrelated to drift. Everything in src/ is still checked.
+ *
+ * Anything added here must genuinely belong to another deployment. A contract in src/ that is
+ * merely inconvenient to match does not qualify.
+ */
+const EXTERNAL_ABIS = new Set(["erc20Abi"]);
+
+/** Every ABI this app exports for its OWN contracts, flattened. */
 function appEntries(): AbiEntry[] {
   const out: AbiEntry[] = [];
-  for (const value of Object.values(appAbis)) {
+  for (const [name, value] of Object.entries(appAbis)) {
+    if (EXTERNAL_ABIS.has(name)) continue;
     if (Array.isArray(value)) out.push(...(value as unknown as AbiEntry[]));
   }
   return out;

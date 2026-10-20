@@ -55,3 +55,17 @@ export function isDeployed(chainId: BotChainId): boolean {
   const d = DEPLOYMENTS[chainId];
   return d.address !== ZERO_ADDRESS && d.deployBlock > 0n;
 }
+
+/**
+ * The governance-token faucet, per network. Empty where none is deployed, which is how the UI
+ * decides whether to offer a claim at all.
+ */
+export const FAUCETS: Record<BotChainId, Address | null> = {
+  677: (process.env.NEXT_PUBLIC_FAUCET_677 as Address) || null,
+  968: (process.env.NEXT_PUBLIC_FAUCET_968 as Address) || null,
+};
+
+export function getFaucet(chainId: BotChainId): Address | null {
+  const a = FAUCETS[chainId];
+  return a && a !== ZERO_ADDRESS ? a : null;
+}

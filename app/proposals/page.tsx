@@ -6,6 +6,8 @@ import PageShell from "@/components/layout/PageShell";
 import Panel from "@/components/ui/Panel";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import ProposalList from "@/components/assembly/ProposalList";
+import ClaimTokensPanel from "@/components/assembly/ClaimTokensPanel";
 import { NAV } from "@/lib/nav";
 
 export default function ProposalsPage() {
@@ -15,9 +17,15 @@ export default function ProposalsPage() {
     <PageShell
       nav={NAV}
       title="Proposals"
-      description="Look up and vote on community governance proposals."
+      description="Every proposal on chain — open now, and those already decided."
     >
       <div className="space-y-6">
+        {/* The list first. Typing a number you already know is the fallback, not the way in. */}
+        <ProposalList />
+
+        {/* Before you open a proposal, not after you find you cannot vote on it. */}
+        <ClaimTokensPanel />
+
         <Panel title="Find a Proposal">
           <div className="space-y-4">
             <p className="text-sm text-zinc-400">
