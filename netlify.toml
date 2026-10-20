@@ -41,9 +41,9 @@
   # secret may ever be given one of these names. Nothing in these apps needs one.
   #
   # Fill in from the output of contracts/script/Deploy.s.sol.
-  NEXT_PUBLIC_BOTCHAIN_NETWORK = "testnet"
-  NEXT_PUBLIC_CONTRACT_677 = ""
-  NEXT_PUBLIC_DEPLOY_BLOCK_677 = ""
+  NEXT_PUBLIC_BOTCHAIN_NETWORK = "mainnet"
+  NEXT_PUBLIC_CONTRACT_677 = "0x3f13E3EA326781CE3653E77016Fd209C80E2642c"
+  NEXT_PUBLIC_DEPLOY_BLOCK_677 = "27329598"
   NEXT_PUBLIC_CONTRACT_968 = "0x3f13E3EA326781CE3653E77016Fd209C80E2642c"
   # The ERC-20 this Assembly governs, minted on Bohr with Forge — our own token
   # deployer producing the input for our own DAO.
@@ -54,7 +54,7 @@
   # the only address that can ever vote is the one that deployed the token. Source-verified at
   # scan.bohr.life; mainnet gets its own when Assembly goes over.
   NEXT_PUBLIC_FAUCET_968 = "0x924f02fF4cd08b13e27eae4BD303ab110F36052E"
-  NEXT_PUBLIC_FAUCET_677 = ""
+  NEXT_PUBLIC_FAUCET_677 = "0xc606b07126eDECd9971394C660D8aD0C10fC3407"
 
 [[headers]]
   for = "/*"

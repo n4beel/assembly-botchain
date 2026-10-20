@@ -5,7 +5,6 @@ import { BaseError, ContractFunctionRevertedError, formatUnits, type Hex } from 
 import {
   useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract,
 } from "wagmi";
-import Panel from "@/components/ui/Panel";
 import Button from "@/components/ui/Button";
 import TxStatus, { type TxStage } from "@/components/ui/TxStatus";
 import { useToast } from "@/components/ui/Toast";
@@ -58,6 +57,14 @@ export default function ClaimTokens({ token, onClaimed }: ClaimTokensProps) {
     abi: govFaucetAbi,
     functionName: "remainingClaims",
     query: { enabled: Boolean(faucet) },
+  });
+
+  const { data: balanceData } = useReadContract({
+    address: token,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(token && address) },
   });
 
   const { data: decimalsData } = useReadContract({
@@ -133,50 +140,52 @@ export default function ClaimTokens({ token, onClaimed }: ClaimTokensProps) {
     }
   }, [faucet, writeContractAsync, toast, refetchClaimed]);
 
-  // No faucet configured for this network: say nothing rather than offer a dead button.
-  if (!faucet) return null;
-
   const decimals = decimalsData ?? 18;
   const symbol = symbolData ?? "GOV";
   const drop = perClaim !== undefined ? formatUnits(perClaim, decimals) : "…";
   const left = remaining !== undefined ? Number(remaining) : null;
   const busy = stage === "signing" || stage === "pending";
+  const balance = balanceData ?? 0n;
+
+  // Shown only when it is the thing standing between you and a vote. No faucet on this network,
+  // no wallet, or a balance already in hand — in each case this is noise, so it renders nothing.
+  // It used to be a full panel sitting below the proposals whether or not it was any use.
+  if (!faucet || !address) return null;
+  if (balance > 0n) return null;
+  if (alreadyClaimed) {
+    return (
+      <p className="text-xs text-zinc-500">
+        This address claimed its {drop} {symbol} already — the balance is committed to an open
+        proposal and returns when that proposal closes.
+      </p>
+    );
+  }
 
   return (
-    <Panel title={`Get ${symbol}`}>
-      <div className="space-y-3">
-        <p className="text-xs text-zinc-400">
-          Voting locks {symbol} until a proposal closes, so you need a balance before you can cast
-          one. The token is fixed-supply with no mint function — this hands out {drop} {symbol} per
-          address from a faucet holding part of that supply.
-        </p>
-
-        {alreadyClaimed ? (
-          <p className="text-xs text-emerald-400">
-            This address has already claimed its {drop} {symbol}.
-          </p>
-        ) : (
-          <>
-            <TxStatus stage={stage} hash={hash} />
-            <Button onClick={() => void claim()} disabled={busy || !address || left === 0}>
-              {busy ? "Claiming…" : left === 0 ? "Faucet is empty" : `Claim ${drop} ${symbol}`}
-            </Button>
-          </>
-        )}
-
-        <p className="text-[11px] text-zinc-500">
-          One claim per address.{" "}
-          {left !== null && <>About {left.toLocaleString()} claims left. </>}
-          <a
-            href={addressUrl(chainId, faucet)}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            Faucet contract
+    <div
+      className="rounded-lg border border-indigo-900/60 bg-indigo-950/20 p-3 flex flex-wrap items-center gap-3"
+    >
+      <div className="flex-1 min-w-[16rem]">
+        <p className="text-sm text-zinc-200">You need {symbol} to vote.</p>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          Voting locks it until the proposal closes. {drop} {symbol} per address, once —{" "}
+          {left !== null && <>{left.toLocaleString()} left, </>}
+          <a href={addressUrl(chainId, faucet)} target="_blank" rel="noreferrer" className="underline">
+            from this faucet
           </a>
+          .
         </p>
       </div>
-    </Panel>
+
+      <Button onClick={() => void claim()} disabled={busy || left === 0}>
+        {busy ? "Claiming…" : left === 0 ? "Faucet is empty" : `Claim ${drop} ${symbol}`}
+      </Button>
+
+      {(stage === "pending" || stage === "failed") && (
+        <div className="w-full">
+          <TxStatus stage={stage} hash={hash} />
+        </div>
+      )}
+    </div>
   );
 }
